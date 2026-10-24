@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plyscope</title>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--line:#2a2f3a;--text:#e6e8ec;--muted:#8b93a3;--accent:#4f8cff;--core:#36c27a;--support:#4f8cff;--noise:#c9a227;--unknown:#a06bff;--empty:#e0565b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:16px;margin:0;font-weight:600}
+header .status{color:var(--muted);font-size:13px;margin-left:auto}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{opacity:.4;cursor:default}
+#drop{margin:40px auto;max-width:560px;border:2px dashed var(--line);border-radius:12px;padding:48px;text-align:center;color:var(--muted)}
+#drop.over{border-color:var(--accent);color:var(--text)}
+#app{display:none;grid-template-columns:330px 1fr;height:calc(100vh - 55px)}
+aside{border-right:1px solid var(--line);overflow:auto;background:var(--panel)}
+.card{padding:14px 16px;border-bottom:1px solid var(--line)}
+.card h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0;font-size:13px}
+dt{color:var(--muted)}dd{margin:0;word-break:break-all}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
+.role{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;font-weight:600;color:#0f1115}
+.role.core{background:var(--core)}.role.support{background:var(--support)}.role.noise{background:var(--noise)}.role.unknown{background:var(--unknown)}.role.empty{background:var(--empty)}
+.layer{display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:6px}
+.layer:hover{background:var(--panel2)}
+.layer.off-page{opacity:.38}
+.layer.iso{outline:1px solid var(--accent)}
+.layer label{flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer .solo{font-size:11px;padding:2px 7px}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+input[type=search]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;margin-bottom:8px}
+main{display:grid;grid-template-rows:auto 1fr 300px;overflow:hidden}
+.toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.toolbar select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px}
+#mode{font-size:13px;color:var(--muted);margin-left:auto}
+#mode b{color:var(--text)}
+.viewer{overflow:auto;background:#2b2f37;display:flex;justify-content:center;align-items:flex-start;padding:16px;position:relative}
+.viewer img{background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.5);max-width:none}
+.viewer.fit img{max-width:100%;height:auto}
+.loading{position:absolute;top:12px;right:16px;background:var(--panel);padding:4px 10px;border-radius:6px;font-size:12px;display:none}
+.bottom{border-top:1px solid var(--line);display:grid;grid-template-rows:auto 1fr;overflow:hidden;background:var(--panel)}
+.tabs{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid var(--line);align-items:center}
+.tab{background:none;border:none;color:var(--muted);padding:6px 10px;cursor:pointer;border-bottom:2px solid transparent;font-size:13px}
+.tab.active{color:var(--text);border-color:var(--accent)}
+.tabs .spacer{flex:1}
+.pane{overflow:auto;display:none}
+.pane.active{display:block}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--panel2);color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--panel2)}
+tbody tr.sel{background:#22304a}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+pre{margin:0;padding:12px 16px;font-size:12px;color:#c8d0dc}
+.desc{padding:10px 16px;font-size:13px;border-bottom:1px solid var(--line);display:none}
+.muted{color:var(--muted)}
+.warn{color:var(--noise);font-size:12px;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+<h1>Plyscope</h1>
+<input id="file" type="file" accept="application/pdf" hidden>
+<button class="btn primary" id="pick">Upload PDF</button>
+<span class="status" id="status">Runs fully on this machine. No data leaves it.</span>
+</header>
+
+<div id="drop">Drop a CAD exported PDF here or click Upload PDF<div id="recent" style="margin-top:18px"></div></div>
+
+<div id="app">
+<aside>
+<div class="card"><h3>File</h3><dl id="info"></dl><div id="infowarn"></div></div>
+<div class="card"><h3>Summary</h3><div class="chips" id="summary"></div></div>
+<div class="card">
+<h3>Layers on page <span id="pglabel"></span></h3>
+<div class="row">
+<button class="btn" id="allOn">All on</button>
+<button class="btn" id="allOff">All off</button>
+<button class="btn" id="pageOnly">Only this page</button>
+</div>
+<input type="search" id="filter" placeholder="Filter layers">
+<div id="layers"></div>
+</div>
+</aside>
+<main>
+<div class="toolbar">
+<button class="btn" id="prev">Prev</button>
+<select id="pageSel"></select>
+<button class="btn" id="next">Next</button>
+<select id="dpi"><option value="72">72 dpi</option><option value="110" selected>110 dpi</option><option value="160">160 dpi</option><option value="220">220 dpi</option></select>
+<button class="btn" id="fit">Fit width</button>
+<span id="mode"></span>
+<button class="btn" id="clearIso" style="display:none">Exit isolate</button>
+</div>
+<div class="viewer fit" id="viewer"><span class="loading" id="loading">Rendering</span><img id="img" alt="Drawing page"></div>
+<div class="bottom">
+<div class="tabs">
+<button class="tab active" data-pane="tablePane">Table</button>
+<button class="tab" data-pane="jsonPane">JSON</button>
+<span class="spacer"></span>
+<a class="btn" id="dlJson" download>Download JSON</a>
+<a class="btn" id="dlCsv" download>Download CSV</a>
+</div>
+<div class="pane active" id="tablePane"><div class="desc" id="desc"></div><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+<div class="pane" id="jsonPane"><pre id="json"></pre></div>
+</div>
+</main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const S={a:null,page:1,visible:new Set(),iso:null,sort:{key:"name",dir:1}};
+const COLS=[["name","Layer"],["role","Role"],["category","Category"],["pages","Pages"],["page_count","# Pages","num"],["ink_pixels","Ink px","num"],["avg_coverage_pct","Avg cov %","num"],["content_level","Content"],["empty","Empty"],["ocg_ids","OCG ids"],["explanation","What it contains"]];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtBytes=b=>b>1048576?(b/1048576).toFixed(2)+" MB":(b/1024).toFixed(1)+" KB";
+function ranges(arr){if(!arr.length)return "none";const out=[];let s=arr[0],p=arr[0];for(let i=1;i<=arr.length;i++){const v=arr[i];if(v===p+1){p=v;continue}out.push(s===p?`${s}`:`${s} to ${p}`);s=p=v}return out.join(", ")}
+function setStatus(t){$("status").textContent=t}
+
+$("pick").onclick=()=>$("file").click();
+$("file").onchange=e=>e.target.files[0]&&upload(e.target.files[0]);
+const drop=$("drop");
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",e=>e.dataTransfer.files[0]&&upload(e.dataTransfer.files[0]));
+drop.addEventListener("click",e=>{if(e.target===drop)$("file").click()});
+
+async function upload(f){
+setStatus(`Analyzing ${f.name} ...`);
+const fd=new FormData();fd.append("file",f);
+try{const r=await fetch("/api/upload",{method:"POST",body:fd});const j=await r.json();if(!r.ok)throw new Error(j.detail||r.statusText);load(j);setStatus(`Analyzed ${f.name}`)}
+catch(err){setStatus("Error: "+err.message)}
+}
+async function openHash(h){const r=await fetch(`/api/analysis/${h}`);if(r.ok)load(await r.json())}
+async function recent(){try{const r=await fetch("/api/files");const l=await r.json();if(l.length)$("recent").innerHTML="Previously analyzed:<br>"+l.map(f=>`<button class="btn" style="margin:4px" onclick="openHash('${f.sha256}')">${esc(f.name)} (${f.page_count} pages, ${f.layer_count} layers)</button>`).join("")}catch(e){}}
+
+function load(a){
+S.a=a;S.page=1;S.iso=null;S.visible=new Set(a.layers.filter(l=>l.default_visible).map(l=>l.name));
+$("drop").style.display="none";$("app").style.display="grid";
+const f=a.file;
+$("info").innerHTML=[["Name",f.name],["Size",fmtBytes(f.size_bytes)],["Pages",f.page_count],["Sheet size",`${f.first_page_size_mm[0]} x ${f.first_page_size_mm[1]} mm`],["Version",f.pdf_version],["Creator",f.creator||"n/a"],["Has layers",f.has_layers?"Yes":"No"],["Layers",`${f.layer_count} unique names (${f.ocg_count} definitions)`],["SHA256",f.sha256.slice(0,16)+"..."]].map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+let w="";
+if(!f.has_layers)w+=`<div class="warn">This PDF has no layers. Pages can be viewed but there is nothing to toggle.</div>`;
+if(f.truncated)w+=`<div class="warn">Large file: analyzed first ${f.pages_analyzed} of ${f.page_count} pages.</div>`;
+if(f.pages_with_untagged_content.length)w+=`<div class="warn">Content outside any layer on pages ${ranges(f.pages_with_untagged_content)}; it stays visible in every view.</div>`;
+if(f.ocg_count>f.layer_count)w+=`<div class="warn">${f.ocg_count-f.layer_count} layer names are defined more than once and were merged by name.</div>`;
+$("infowarn").innerHTML=w;
+const s=a.summary;
+$("summary").innerHTML=[["total","Total"],["core","Core"],["support","Support"],["noise","Noise"],["unknown","Unknown"],["empty","Empty"]].map(([k,l])=>`<span class="chip">${l}: <b>${s[k]}</b></span>`).join("");
+$("pageSel").innerHTML=a.pages.map(p=>`<option value="${p.page}">Page ${p.page}${p.sheet?" / "+esc(p.sheet):""} (${p.layers_with_content.length} layers)</option>`).join("");
+$("dlJson").href=`/api/analysis/${f.sha256}/layers.json`;$("dlCsv").href=`/api/analysis/${f.sha256}/layers.csv`;
+$("json").textContent=JSON.stringify(a.layers,null,2);
+renderTable();renderLayerList();renderImage();
+}
+
+function pageInfo(){return S.a.pages[S.page-1]}
+function renderLayerList(){
+const a=S.a,p=pageInfo(),q=$("filter").value.toLowerCase(),here=new Set(p.layers_with_content);
+$("pglabel").textContent=`${S.page} (${here.size})`;
+const list=[...a.layers].sort((x,y)=>(here.has(y.name)-here.has(x.name))||x.name.localeCompare(y.name)).filter(l=>l.name.toLowerCase().includes(q));
+$("layers").innerHTML=list.map(l=>{const id="cb_"+btoa(unescape(encodeURIComponent(l.name))).replace(/=/g,"");return `<div class="layer ${here.has(l.name)?"":"off-page"} ${S.iso===l.name?"iso":""}" title="${esc(l.explanation)}"><input type="checkbox" id="${id}" data-n="${esc(l.name)}" ${S.visible.has(l.name)?"checked":""} ${S.iso?"disabled":""}><label for="${id}">${esc(l.name)}</label><span class="role ${l.role}">${l.role}</span><button class="btn solo" data-solo="${esc(l.name)}">Solo</button></div>`}).join("")||`<div class="muted">No layers</div>`;
+$("layers").querySelectorAll("input[type=checkbox]").forEach(cb=>cb.onchange=()=>{cb.checked?S.visible.add(cb.dataset.n):S.visible.delete(cb.dataset.n);renderImage()});
+$("layers").querySelectorAll("[data-solo]").forEach(b=>b.onclick=()=>isolate(b.dataset.solo,false));
+}
+
+function isolate(name,jump){
+S.iso=name;const l=S.a.layers.find(x=>x.name===name);
+if(jump&&l&&l.pages.length&&!l.pages.includes(S.page)){S.page=l.pages[0];$("pageSel").value=S.page}
+showDesc(l);renderLayerList();renderImage();renderTable();
+}
+function showDesc(l){const d=$("desc");if(!l){d.style.display="none";return}d.style.display="block";d.innerHTML=`<b>${esc(l.name)}</b> <span class="role ${l.role}">${l.role}</span> ${esc(l.explanation)}. Appears on pages ${ranges(l.pages)}. ${l.empty?"Empty layer.":`${l.ink_pixels.toLocaleString()} ink pixels, ${l.content_level} content.`}`}
+$("clearIso").onclick=()=>{S.iso=null;showDesc(null);renderLayerList();renderImage();renderTable()};
+
+let renderSeq=0;
+function renderImage(){
+const a=S.a,h=a.file.sha256,dpi=$("dpi").value,qs=new URLSearchParams({page:S.page,dpi});
+const names=S.iso?[S.iso]:[...S.visible];
+if(!a.file.has_layers)qs.set("mode","default");else names.sort().forEach(n=>qs.append("layer",n));
+const url=`/api/render/${h}?${qs}`,seq=++renderSeq,img=new Image();
+$("loading").style.display="block";
+img.onload=()=>{if(seq!==renderSeq)return;$("img").src=url;$("loading").style.display="none"};
+img.onerror=()=>{$("loading").textContent="Render failed"};
+img.src=url;
+const here=new Set(pageInfo().layers_with_content);
+$("mode").innerHTML=S.iso?`Isolated: <b>${esc(S.iso)}</b>${here.has(S.iso)?"":" (no content on this page)"}`:`Showing <b>${[...S.visible].filter(n=>here.has(n)).length}</b> of ${here.size} layers on this page`;
+$("clearIso").style.display=S.iso?"inline-block":"none";
+$("prev").disabled=S.page<=1;$("next").disabled=S.page>=a.pages.length;
+}
+
+function renderTable(){
+const {key,dir}=S.sort;
+$("thead").innerHTML=COLS.map(([k,l])=>`<th data-k="${k}">${l}${k===key?(dir>0?" ↑":" ↓"):""}</th>`).join("");
+$("thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{S.sort={key:th.dataset.k,dir:S.sort.key===th.dataset.k?-S.sort.dir:1};renderTable()});
+const rows=[...S.a.layers].sort((x,y)=>{let a=x[key],b=y[key];if(Array.isArray(a)){a=a.length;b=b.length}return (a>b?1:a<b?-1:0)*dir||x.name.localeCompare(y.name)});
+$("tbody").innerHTML=rows.map(l=>`<tr data-n="${esc(l.name)}" class="${S.iso===l.name?"sel":""}">${COLS.map(([k,,c])=>{let v=l[k];if(k==="role")v=`<span class="role ${v}">${v}</span>`;else if(k==="pages")v=esc(ranges(v));else if(Array.isArray(v))v=esc(v.join(", "));else if(k==="ink_pixels")v=v.toLocaleString();else if(typeof v==="boolean")v=v?"Yes":"No";else v=esc(v);return `<td class="${c||""}">${v}</td>`}).join("")}</tr>`).join("");
+$("tbody").querySelectorAll("tr").forEach(tr=>tr.onclick=()=>isolate(tr.dataset.n,true));
+}
+
+$("pageSel").onchange=e=>{S.page=+e.target.value;renderLayerList();renderImage()};
+$("prev").onclick=()=>{if(S.page>1){S.page--;$("pageSel").value=S.page;renderLayerList();renderImage()}};
+$("next").onclick=()=>{if(S.page<S.a.pages.length){S.page++;$("pageSel").value=S.page;renderLayerList();renderImage()}};
+$("dpi").onchange=renderImage;
+$("fit").onclick=()=>{$("viewer").classList.toggle("fit");$("fit").textContent=$("viewer").classList.contains("fit")?"Actual size":"Fit width"};
+$("fit").textContent="Actual size";
+$("filter").oninput=renderLayerList;
+$("allOn").onclick=()=>{S.iso=null;showDesc(null);S.visible=new Set(S.a.layers.map(l=>l.name));renderLayerList();renderImage();renderTable()};
+$("allOff").onclick=()=>{S.iso=null;showDesc(null);S.visible=new Set();renderLayerList();renderImage();renderTable()};
+$("pageOnly").onclick=()=>{S.iso=null;showDesc(null);S.visible=new Set(pageInfo().layers_with_content);renderLayerList();renderImage();renderTable()};
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{document.querySelectorAll(".tab,.pane").forEach(x=>x.classList.remove("active"));t.classList.add("active");$(t.dataset.pane).classList.add("active")});
+document.addEventListener("keydown",e=>{if(!S.a||e.target.tagName==="INPUT")return;if(e.key==="ArrowRight")$("next").click();if(e.key==="ArrowLeft")$("prev").click();if(e.key==="Escape"&&S.iso)$("clearIso").click()});
+recent();
+</script>
+</body>
+</html>
